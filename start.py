@@ -79,10 +79,23 @@ if __name__ == '__main__':
         file = open(filename + '.txt', 'w')
 
         # Готовим первую строку с информацией о пользователе
-        user_info = user['name'] + '<' + user['email'] + '>' + ' ' + datetime.today().strftime('%d.%m.%Y %H:%M')
+        user_info = user['name']
+
+        # Предусматриваем случай, если у пользователя нет адреса электронной почты
+        if 'mail' in user:
+            user_info += '<' + user['email'] + '>'
+        else:
+            user_info += '<email отсутствует>'
+
+        # Добавляем дату формирования отчета
+        user_info += ' ' + datetime.today().strftime('%d.%m.%Y %H:%M')
 
         # Готовим вторую строку с названием компании
-        company_info = user['company']['name']
+        # Также предусматриваем особый случай (хотя он и кажется мне маловероятным), если у пользователя нет компании
+        if 'company' in user:
+            company_info = user['company']['name']
+        else:
+            company_info = ' - компания, не найдена'
 
         # Записываем в файл данные о пользователе и названии компании
         file.write(user_info + '\n')
@@ -98,6 +111,7 @@ if __name__ == '__main__':
                 for task in user_tasks:
                     file.write(task + '\n')
             else:
+                # Предусматриваем особый случай: задач (завершенных или незавершенных) нет
                 file.write(' - таких задач нет\n')
 
         # Закрываем файл
