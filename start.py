@@ -36,22 +36,18 @@ if __name__ == '__main__':
         # Записываем в файл данные о пользователе и названии компании
         file.write(user_info + '\n')
         file.write(company_info + '\n')
-        file.write('\n')
 
-        # Формируем список завешенных пользователем задач и записываем их в файл
-        file.write('Завершенные задачи:\n')
-        completed_tasks = get_user_tasks(tasks_data, user['id'], True)
-        for task in completed_tasks:
-            file.write(task + '\n')
-
-        # Вставляем в файл пустую строку между списками задач
-        file.write('\n')
-
-        # Формируем список не завершенных задач и записываем их в файл
-        file.write('Оставшиеся задачи:\n')
-        not_completed_tasks = get_user_tasks(tasks_data, user['id'], False)
-        for task in not_completed_tasks:
-            file.write(task + '\n')
+        # Записываем в файл данные о завершенных и незавершенных задачах пользователя
+        tasks_description = [('Завершенные задачи:', True), ('Оставшиеся задачи:', False)]
+        for description, completed_flag in tasks_description:
+            file.write('\n')
+            file.write(description + '\n')
+            user_tasks = get_user_tasks(tasks_data, user['id'], completed_flag)
+            if user_tasks:
+                for task in user_tasks:
+                    file.write(task + '\n')
+            else:
+                file.write(' - таких задач нет\n')
 
         # Закрываем файл
         file.close()
