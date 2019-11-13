@@ -23,9 +23,28 @@ if __name__ == '__main__':
 
     # Во цикле перебираем пользователей
     for user in users_data:
-        # Открываем файл, соответствующий пользователю, в режиме "запись"
-        filename = 'tasks/' + user['username'] + '.txt'
-        file = open(filename, 'w')
+        # Фомируем имя файла, соответствующее текущему пользователю
+        filename = 'tasks/' + user['username']
+
+        # Проверяем, существует ли такой файл
+        # И если существует, то переименовываем его и только потом записываем новый файл
+        if os.path.exists(filename + '.txt'):
+            # Читаем первую строку файла с отчетом...
+            file = open(filename + '.txt', 'r')
+            first_line = file.readline()
+            file.close()
+
+            # ...и извлекаем из неё дату создания отчета
+            date_created = first_line[first_line.index('>') + 2:len(first_line) - 1]
+            date_created = date_created.replace(' ', 'T')
+            date_created = date_created.replace('.', '-')
+            date_created = date_created.replace(':', '-')
+
+            # Переименовываем файл
+            os.rename(filename + '.txt', filename + '_' + date_created + '.txt')
+
+        # Записываем новый файл
+        file = open(filename + '.txt', 'w')
 
         # Готовим первую строку с информацией о пользователе
         user_info = user['name'] + '<' + user['email'] + '>' + ' ' + datetime.today().strftime('%d.%m.%Y %H:%M')
