@@ -3,29 +3,34 @@ import requests
 from datetime import datetime
 from sys import exit
 
+# Основные параметры работы программы: адреса api-интерфейсов и наименование папки с отчетами
 USERS_API_URL = 'https://jsonplaceholder.typicode.com/users'
 TASKS_API_URL = 'https://jsonplaceholder.typicode.com/todos'
+REPORT_FOLDER = 'tasks'
 
 
 def get_data_from_api(api_url):
     """
+    Функция получает данные от api.
+    Если во время получения данных произошла ошибка, то возбуждается исключение.
     :param api_url: адрес api-интерфейса
     :return: полученные от api данные
     """
     request = requests.get(api_url)
     status_code = request.status_code
     if status_code != 200:
-        raise Exception('Не удалось получить данные от api. Код ошибки: ' + str(status_code))
+        raise Exception('Не удалось получить данные от api. Http-код ошибки: ' + str(status_code))
     return request.json()
 
 
 def get_user_tasks(tasks_list, user_id, completed):
     """
+    Функция формирует и возвращает список с наименованиями задач пользователя
     :param tasks_list: словарь json с данными о задачах
-    :param user_id: пользователь, данные о котором надо извлечь из словаря
+    :param user_id: пользователь, данные о котором надо извлечь из словаря задач
     :param completed: признак завершения задач (если True, извлекаем завершенные задачи;
-                      если False - извлекаем не завершенные задачи)
-    :return: наименования задач, удовлетворяющих условиям фильтрации
+                      если False - извлекаем незавершенные задачи)
+    :return: список с наименованиями задач, удовлетворяющих условиям фильтрации
     """
     result = []
     for task in tasks_list:
@@ -38,81 +43,108 @@ def get_user_tasks(tasks_list, user_id, completed):
     return result
 
 
+def check_and_create_report_folder():
+    """Функция проверяет наличие папки с отчетами и если её нет - создаёт её"""
+    if not os.path.isdir(REPORT_FOLDER):
+        os.mkdir(REPORT_FOLDER)
+
+
+def check_and_rename_old_file(username):
+    """
+    Функция ищет на диске файл с отчетом по пользователю и если такой файл есть - переименовывает его
+    :param username: имя пользователя, по которому проверяем наличие отчета на диске
+    """
+    # Если отчет существует, то...
+    if os.path.exists(REPORT_FOLDER + '/' + username + '.txt'):
+        # ...читаем первую строку файла с отчетом...
+        file = open(REPORT_FOLDER + '/' + username + '.txt', 'r')
+        first_line = file.readline()
+        file.close()
+
+        # ...и извлекаем из неё дату создания отчета и...
+        date_created = first_line[first_line.index('>') + 2:len(first_line) - 1]
+        date_created = date_created.replace(' ', 'T')
+        date_created = date_created.replace('.', '-')
+        date_created = date_created.replace(':', '-')
+
+        # ...переименовываем найденный файл
+        os.rename(REPORT_FOLDER + '/' + username + '.txt',
+                  REPORT_FOLDER + '/' + username + '_' + date_created + '.txt')
+
+
+def write_data_to_file(username, data):
+    """
+    Функция записывает переданный ей отчет в файл
+    :param username: пользователь, данные по которому будем записывать в файл
+    :param data: список строк, для записи в файл
+    """
+    file = open(REPORT_FOLDER + '/' + username + '.txt', 'w')
+    for data_element in data:
+        file.write(data_element + '\n')
+    file.close()
+
+
 if __name__ == '__main__':
+    print('Начинаем...')
+
     # Получаем данные от api
     try:
         users_data = get_data_from_api(USERS_API_URL)
         tasks_data = get_data_from_api(TASKS_API_URL)
+        print('Данные от api успешно получены')
     except Exception as e:
         # Если возникла ошибка при получении данных от api - выводим сообщение об ошибке и завершаем работу
         print(e)
         input('Для завершения работы нажмите Enter...')
         exit(0)
 
-    # Если каталог с отчетами не существует - создаем его
-    if not os.path.isdir('tasks'):
-        os.mkdir('tasks')
+    # Проверяем наличие каталога с отчетами. Если его нет - он будет создан
+    check_and_create_report_folder()
 
     # В цикле перебираем пользователей
     for user in users_data:
-        # Фомируем имя файла, соответствующее текущему пользователю
-        filename = 'tasks/' + user['username']
+        # Проверяем, существует ли файл с отчетом по данному пользователю и если существует, он будет переименован
+        check_and_rename_old_file(user['username'])
 
-        # Проверяем, существует ли такой файл
-        # И если существует, то переименовываем его и только потом записываем новый файл
-        if os.path.exists(filename + '.txt'):
-            # Читаем первую строку файла с отчетом...
-            file = open(filename + '.txt', 'r')
-            first_line = file.readline()
-            file.close()
-
-            # ...и извлекаем из неё дату создания отчета
-            date_created = first_line[first_line.index('>') + 2:len(first_line) - 1]
-            date_created = date_created.replace(' ', 'T')
-            date_created = date_created.replace('.', '-')
-            date_created = date_created.replace(':', '-')
-
-            # Переименовываем файл
-            os.rename(filename + '.txt', filename + '_' + date_created + '.txt')
-
-        # Записываем новый файл
-        file = open(filename + '.txt', 'w')
+        # Список строк, которые будут записаны в файл
+        file_data = []
 
         # Готовим первую строку с информацией о пользователе
         user_info = user['name']
 
         # Предусматриваем случай, если у пользователя нет адреса электронной почты
-        if 'mail' in user:
+        if 'email' in user:
             user_info += '<' + user['email'] + '>'
         else:
             user_info += '<email отсутствует>'
 
         # Добавляем дату формирования отчета
         user_info += ' ' + datetime.today().strftime('%d.%m.%Y %H:%M')
+        file_data.append(user_info)
 
         # Готовим вторую строку с названием компании
         # Также предусматриваем особый случай (хотя он и кажется мне маловероятным), если у пользователя нет компании
         if 'company' in user:
             company_info = user['company']['name']
         else:
-            company_info = ' - компания, не найдена'
+            company_info = ' - компания не найдена'
+        file_data.append(company_info)
 
-        # Записываем в файл данные о пользователе и названии компании
-        file.write(user_info + '\n')
-        file.write(company_info + '\n')
-
-        # Записываем в файл данные о завершенных и незавершенных задачах пользователя
+        # Добавляем данные о завершенных и незавершенных задачах пользователя
         tasks_description = [('Завершенные задачи:', True), ('Оставшиеся задачи:', False)]
         for description, completed_flag in tasks_description:
-            file.write('\n')
-            file.write(description + '\n')
+            file_data.append('')
+            file_data.append(description)
             user_tasks = get_user_tasks(tasks_data, user['id'], completed_flag)
             if user_tasks:
                 for task in user_tasks:
-                    file.write(task + '\n')
+                    file_data.append(task)
             else:
                 # Предусматриваем особый случай: задач (завершенных или незавершенных) нет
-                file.write(' - таких задач нет\n')
+                file_data.append(' - таких задач нет')
 
-        # Закрываем файл
-        file.close()
+        # Записываем данные в файл
+        write_data_to_file(user['username'], file_data)
+
+    print('Работа завершена. Для выхода нажмите Enter...')
+    input()
