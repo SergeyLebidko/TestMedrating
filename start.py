@@ -1,16 +1,48 @@
 import os
+import requests
 from datetime import datetime
 from sys import exit
-from functions import get_data_from_api, get_user_tasks
 
-users_api_url = 'https://jsonplaceholder.typicode.com/users'
-todos_api_url = 'https://jsonplaceholder.typicode.com/todos'
+USERS_API_URL = 'https://jsonplaceholder.typicode.com/users'
+TASKS_API_URL = 'https://jsonplaceholder.typicode.com/todos'
+
+
+def get_data_from_api(api_url):
+    """
+    :param api_url: адрес api-интерфейса
+    :return: полученные от api данные
+    """
+    request = requests.get(api_url)
+    status_code = request.status_code
+    if status_code != 200:
+        raise Exception('Не удалось получить данные от api. Код ошибки: ' + str(status_code))
+    return request.json()
+
+
+def get_user_tasks(tasks_list, user_id, completed):
+    """
+    :param tasks_list: словарь json с данными о задачах
+    :param user_id: пользователь, данные о котором надо извлечь из словаря
+    :param completed: признак завершения задач (если True, извлекаем завершенные задачи;
+                      если False - извлекаем не завершенные задачи)
+    :return: наименования задач, удовлетворяющих условиям фильтрации
+    """
+    result = []
+    for task in tasks_list:
+        if task['userId'] == user_id and task['completed'] == completed:
+            task_name = task['title']
+            if len(task_name) > 50:
+                task_name = task_name[:50] + '...'
+            result.append(task_name)
+
+    return result
+
 
 if __name__ == '__main__':
     # Получаем данные от api
     try:
-        users_data = get_data_from_api(users_api_url)
-        tasks_data = get_data_from_api(todos_api_url)
+        users_data = get_data_from_api(USERS_API_URL)
+        tasks_data = get_data_from_api(TASKS_API_URL)
     except Exception as e:
         # Если возникла ошибка при получении данных от api - выводим сообщение об ошибке и завершаем работу
         print(e)
@@ -21,7 +53,7 @@ if __name__ == '__main__':
     if not os.path.isdir('tasks'):
         os.mkdir('tasks')
 
-    # Во цикле перебираем пользователей
+    # В цикле перебираем пользователей
     for user in users_data:
         # Фомируем имя файла, соответствующее текущему пользователю
         filename = 'tasks/' + user['username']
