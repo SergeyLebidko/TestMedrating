@@ -68,8 +68,19 @@ def check_and_rename_old_file(username):
         date_created = date_created.replace(':', '-')
 
         # ...переименовываем найденный файл
-        os.rename(REPORT_FOLDER + '/' + username + '.txt',
-                  REPORT_FOLDER + '/' + username + '_' + date_created + '.txt')
+        # При этом при переименовании нужно учитывать тот факт, что при слишком частых запросах к api
+        # могут создаваться файлы с одинаковым временем создания отчета и это будет приводить к ошибке переименования.
+        # Чтобы обойти эту ошибку, к концу каждого имени файла добавляется в таком случае еще и его порядковый номер
+        # О возможности этой ошибки не было сказано в задании, я нашел её в ходе тестирования
+        number = 0
+        while True:
+            number_str = '(' + str(number) + ')' if number > 0 else ''
+            try:
+                os.rename(REPORT_FOLDER + '/' + username + '.txt',
+                          REPORT_FOLDER + '/' + username + '_' + date_created + number_str + '.txt')
+                break
+            except FileExistsError:
+                number += 1
 
 
 def write_data_to_file(username, data):
@@ -78,10 +89,9 @@ def write_data_to_file(username, data):
     :param username: пользователь, данные по которому будем записывать в файл
     :param data: список строк, для записи в файл
     """
-    file = open(REPORT_FOLDER + '/' + username + '.txt', 'w')
-    for data_element in data:
-        file.write(data_element + '\n')
-    file.close()
+    with open(REPORT_FOLDER + '/' + username + '.txt', 'w') as file:
+        for data_element in data:
+            file.write(data_element + '\n')
 
 
 if __name__ == '__main__':
