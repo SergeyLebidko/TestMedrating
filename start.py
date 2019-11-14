@@ -64,8 +64,15 @@ def check_and_rename_old_file(username):
         file.close()
 
         # ...и извлекаем из неё дату создания отчета и...
-        date_created = first_line[first_line.index('>') + 2:len(first_line) - 1]
-        date_created = date_created.replace(' ', 'T').replace('.', '-').replace(':', '-')
+        date_time_created = first_line[first_line.index('>') + 2:len(first_line) - 1]
+        date_created = date_time_created.split(' ')[0]
+        time_created = date_time_created.split(' ')[1]
+        year = date_created.split('.')[2]
+        month = date_created.split('.')[1]
+        day = date_created.split('.')[0]
+        hour = time_created.split(':')[0]
+        minute = time_created.split(':')[1]
+        date_to_filename = year + '-' + month + '-' + day + 'T' + hour + '-' + minute
 
         # ...переименовываем найденный файл
         # При этом при переименовании нужно учитывать тот факт, что при слишком частых запросах к api
@@ -76,7 +83,7 @@ def check_and_rename_old_file(username):
         while True:
             number_str = '(' + str(number) + ')' if number > 0 else ''
             try:
-                new_file_path = REPORT_FOLDER + '/' + username + '_' + date_created + number_str + '.txt'
+                new_file_path = REPORT_FOLDER + '/' + username + '_' + date_to_filename + number_str + '.txt'
                 os.rename(file_path, new_file_path)
                 break
             except FileExistsError:
